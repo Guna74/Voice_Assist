@@ -34,7 +34,7 @@ const Product = require('./models/Product');   // Mongoose schema (name, price �
 //  Middleware
 // ─────────────────────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5000',
+  origin: process.env.FRONTEND_URL,
   credentials: true
 }));
 app.use(express.json());                        // Parse JSON bodies
