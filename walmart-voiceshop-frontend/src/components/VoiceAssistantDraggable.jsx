@@ -2,39 +2,41 @@ import React, { useRef, useState, useEffect } from "react";
 import "./VoiceAssistantDraggable.css";
 
 export default function VoiceAssistantDraggable({ children }) {
-  // Start at bottom right, open by default
+  // Start at top right, open by default
   const [position, setPosition] = useState({
-  x: window.innerWidth - 360, // right side
-  y: 100                      // just below the nav bar
-});
+    x: window.innerWidth - 360, // right side
+    y: 100                      // just below the nav bar
+  });
 
   const [isOpen, setIsOpen] = useState(true);
   const [dragging, setDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
+
+  // For mobile tap vs drag on close button
+  const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
+
   const BOX_OPEN_WIDTH = 340;
-const BOX_CLOSED_WIDTH = 90;
+  const BOX_CLOSED_WIDTH = 90;
 
-const handleToggle = (e) => {
-  e.stopPropagation();
-  setIsOpen((prevOpen) => {
-    // When collapsing, shift left so the right edge stays put
-    if (prevOpen) {
-      setPosition(pos => ({
-        x: pos.x + (BOX_OPEN_WIDTH - BOX_CLOSED_WIDTH),
-        y: pos.y
-      }));
-    } else {
-      // When opening, shift right so the right edge stays put
-      setPosition(pos => ({
-        x: pos.x - (BOX_OPEN_WIDTH - BOX_CLOSED_WIDTH),
-        y: pos.y
-      }));
-    }
-    return !prevOpen;
-  });
-};
+  // Toggle open/close and keep right edge fixed
+  const handleToggle = () => {
+    setIsOpen((prevOpen) => {
+      if (prevOpen) {
+        setPosition(pos => ({
+          x: pos.x + (BOX_OPEN_WIDTH - BOX_CLOSED_WIDTH),
+          y: pos.y
+        }));
+      } else {
+        setPosition(pos => ({
+          x: pos.x - (BOX_OPEN_WIDTH - BOX_CLOSED_WIDTH),
+          y: pos.y
+        }));
+      }
+      return !prevOpen;
+    });
+  };
 
-  // Update position on drag
+  // Drag handlers (mouse)
   const handleMouseDown = (e) => {
     setDragging(true);
     const box = e.currentTarget;
@@ -50,7 +52,6 @@ const handleToggle = (e) => {
     if (!dragging) return;
     let newX = e.clientX - dragOffset.current.x;
     let newY = e.clientY - dragOffset.current.y;
-    // Clamp to viewport
     newX = Math.max(0, Math.min(newX, window.innerWidth - (isOpen ? 340 : 90)));
     newY = Math.max(0, Math.min(newY, window.innerHeight - (isOpen ? 400 : 90)));
     setPosition({ x: newX, y: newY });
@@ -61,7 +62,7 @@ const handleToggle = (e) => {
     document.body.style.userSelect = "";
   };
 
-  // Touch support (for mobile)
+  // Drag handlers (touch)
   const handleTouchStart = (e) => {
     setDragging(true);
     const touch = e.touches[0];
@@ -87,6 +88,7 @@ const handleToggle = (e) => {
     setDragging(false);
   };
 
+  // Attach drag listeners
   useEffect(() => {
     if (dragging) {
       window.addEventListener("mousemove", handleMouseMove);
@@ -108,6 +110,32 @@ const handleToggle = (e) => {
     // eslint-disable-next-line
   }, [dragging, isOpen]);
 
+  // --- Mobile-friendly close button handlers ---
+  const handleCloseTouchStart = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      setTouchStart({
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      });
+    }
+    e.stopPropagation();
+  };
+
+  const handleCloseTouchEnd = (e) => {
+    if (e.changedTouches && e.changedTouches.length === 1) {
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const dx = endX - touchStart.x;
+      const dy = endY - touchStart.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance < 10) {
+        // It was a tap, not a drag: collapse the box
+        handleToggle();
+      }
+    }
+    e.stopPropagation();
+  };
+
   return (
     <div
       className={`vad-box${isOpen ? " open" : ""}`}
@@ -124,21 +152,18 @@ const handleToggle = (e) => {
     >
       <div className="vad-header">
         <button
-  className="vad-mic-btn"
-  onClick={(e) => {
-    e.stopPropagation();
-    handleToggle(e);
-  }}
-  onTouchStart={(e) => {
-    e.stopPropagation();
-    handleToggle(e);
-  }}
-  tabIndex={0}
-  aria-label={isOpen ? "Close assistant" : "Open assistant"}
->
-  {isOpen ? "×" : "🎤"}
-</button>
-
+          className="vad-mic-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggle();
+          }}
+          onTouchStart={handleCloseTouchStart}
+          onTouchEnd={handleCloseTouchEnd}
+          tabIndex={0}
+          aria-label={isOpen ? "Close assistant" : "Open assistant"}
+        >
+          {isOpen ? "×" : "🎤"}
+        </button>
       </div>
       {isOpen && (
         <div className="vad-content">
