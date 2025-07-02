@@ -124,16 +124,21 @@ const handleToggle = (e) => {
     >
       <div className="vad-header">
         <button
-          className="vad-mic-btn"
-          onClick={e => {
-            e.stopPropagation();
-            handleToggle(e);
-          }}
-          tabIndex={0}
-          aria-label={isOpen ? "Close assistant" : "Open assistant"}
-        >
-          {isOpen ? "×" : "🎤"}
-        </button>
+  className="vad-mic-btn"
+  onClick={(e) => {
+    e.stopPropagation();
+    handleToggle(e);
+  }}
+  onTouchStart={(e) => {
+    e.stopPropagation();
+    handleToggle(e);
+  }}
+  tabIndex={0}
+  aria-label={isOpen ? "Close assistant" : "Open assistant"}
+>
+  {isOpen ? "×" : "🎤"}
+</button>
+
       </div>
       {isOpen && (
         <div className="vad-content">
