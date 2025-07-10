@@ -6,6 +6,7 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 export default function VoiceControl({ onCommand }) {
   const { currentLanguage, setCurrentLanguage } = useAppContext();
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false); // <-- NEW
   const recognitionRef = useRef(null);
 
   // Setup speech recognition and update language when changed
@@ -26,23 +27,23 @@ export default function VoiceControl({ onCommand }) {
     recognitionRef.current = recognition;
   }, [currentLanguage, onCommand]);
 
-  // Pause voice recognition when TTS is speaking
+  // Pause voice recognition when TTS is speaking, and track speaking state
   useEffect(() => {
     const synth = window.speechSynthesis;
-    const handleStart = () => recognitionRef.current?.stop();
-    const handleEnd = () => {
-      if (!isListening) recognitionRef.current?.start();
-    };
+    const handleStart = () => setIsSpeaking(true);
+    const handleEnd = () => setIsSpeaking(false);
+
     synth.addEventListener('start', handleStart);
     synth.addEventListener('end', handleEnd);
     return () => {
       synth.removeEventListener('start', handleStart);
       synth.removeEventListener('end', handleEnd);
     };
-  }, [isListening]);
+  }, []);
 
   // Start/stop listening
-  const toggleListening = () => {
+  const toggleListening = (e) => {
+    e.stopPropagation();
     const rec = recognitionRef.current;
     if (!rec) return;
     if (isListening) {
@@ -72,12 +73,20 @@ export default function VoiceControl({ onCommand }) {
         </span>
       </div>
       <button
-        onClick={toggleListening}
         className={`voice-button click-to-speak${isListening ? ' listening' : ''}`}
-      >
-        {isListening
+        onClick={toggleListening}
+        onTouchStart={toggleListening}
+        aria-label={isListening
           ? (currentLanguage.startsWith('es') ? 'Detener' : 'Stop')
           : (currentLanguage.startsWith('es') ? 'Hablar' : 'Speak')}
+        disabled={isSpeaking} // <-- DISABLE while speaking
+        style={isSpeaking ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+      >
+        {isSpeaking
+          ? (currentLanguage.startsWith('es') ? 'Hablando...' : 'Speaking...')
+          : isListening
+            ? (currentLanguage.startsWith('es') ? 'Detener' : 'Stop')
+            : (currentLanguage.startsWith('es') ? 'Hablar' : 'Speak')}
       </button>
       <div className="language-section">
         <label htmlFor="vad-lang">
@@ -85,6 +94,7 @@ export default function VoiceControl({ onCommand }) {
         </label>
         <select
           id="vad-lang"
+          name="language"
           value={currentLanguage}
           onChange={handleLanguageChange}
           className="language-selector"

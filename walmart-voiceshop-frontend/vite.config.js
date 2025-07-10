@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5000,
-    host: true,
+    open: true,
     cors: true
   },
   publicDir: 'public',
@@ -16,8 +16,5 @@ export default defineConfig({
   },
   css: {
     devSourcemap: true
-  },
-  optimizeDeps: {
-    include: ['react', 'react-dom']
   }
 });

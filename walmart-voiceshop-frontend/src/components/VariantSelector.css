@@ -1,0 +1,41 @@
+/* src/components/VariantSelector.css */
+
+.variant-selector {
+  margin: 15px 0;
+}
+
+.variant-label {
+  font-weight: 600;
+  color: #0071ce;
+  margin-bottom: 8px;
+  display: block;
+  font-size: 0.95rem;
+}
+
+.variant-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.variant-button {
+  padding: 8px 16px;
+  border: 2px solid #0071ce;
+  border-radius: 20px;
+  background: white;
+  color: #0071ce;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.variant-button:hover {
+  background: #e7f4ff;
+}
+
+.variant-button.selected {
+  background: #0071ce;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 113, 206, 0.3);
+}

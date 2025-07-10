@@ -12,6 +12,7 @@ export const AppProvider = ({ children }) => {
     { role: 'assistant', text: 'Hello! How can I help you today?' }
   ]);
 
+  
   const addMessage = (role, text) => {
     setMessages(prev => [...prev, { role, text }]);
   };

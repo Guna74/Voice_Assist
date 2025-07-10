@@ -1,39 +1,110 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
-import Modal from './Modal';
+import './Orders.css';
 
-export default function Orders() {
+export default function Orders({ onOrderClick }) {
   const { orders } = useContext(AppContext);
-  const [modalOrder, setModalOrder] = React.useState(null);
+  const [modalOrder, setModalOrder] = useState(null);
+
+  if (!orders || orders.length === 0) {
+    return (
+      <div className="orders-section">
+        <div className="orders-empty">
+          <div className="orders-empty-icon">📦</div>
+          No orders yet.
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2>Your Orders</h2>
-      {orders.length === 0 && <p>No orders yet.</p>}
-      <ul>
+    <div className="orders-section">
+      <div className="orders-title">Your Orders</div>
+      <div className="orders-list">
         {orders.map(order => (
-          <li key={order.id}>
-            <span>Order #{order.id} - {order.date} - ${order.total.toFixed(2)}</span>
-            <button onClick={() => setModalOrder(order)}>View Details</button>
-          </li>
+          <div
+            key={order.id}
+            className="order-item"
+            onClick={() => setModalOrder(order)}
+            tabIndex={0}
+            role="button"
+            aria-label={`View order ${order.id} details`}
+          >
+            <div className="order-summary">
+              <div className="order-id">Order #{order.id}</div>
+              <div className="order-date">{order.date}</div>
+              <div className="order-total">${order.total?.toFixed(2) ?? '0.00'}</div>
+              <span className="order-status">{order.status || 'Completed'}</span>
+            </div>
+            <button
+              className="order-details-btn"
+              onClick={e => {
+                e.stopPropagation();
+                setModalOrder(order);
+              }}
+            >
+              View Details
+            </button>
+          </div>
         ))}
-      </ul>
+      </div>
 
       {modalOrder && (
-        <Modal onClose={() => setModalOrder(null)}>
-          <h3>Order #{modalOrder.id}</h3>
-          <p><strong>Date:</strong> {modalOrder.date}</p>
-          <p><strong>Total:</strong> ${modalOrder.total.toFixed(2)}</p>
-          <h4>Items:</h4>
-          <ul>
-            {modalOrder.items.map(item => (
-              <li key={item._id}>
-                {item.name} x {item.quantity} = ${(item.price * item.quantity).toFixed(2)}
-              </li>
-            ))}
-          </ul>
-          <p><strong>Shipping to:</strong> {modalOrder.customer.name}, {modalOrder.customer.address}</p>
-        </Modal>
+        <div className="modal-overlay" onClick={() => setModalOrder(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <button
+              className="modal-close"
+              onClick={() => setModalOrder(null)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <h2 className="modal-title">Order Details</h2>
+            <div className="order-details">
+              <div>
+                <strong>Date:</strong> {modalOrder.date}
+              </div>
+              <div>
+                <strong>Total:</strong> ${modalOrder.total?.toFixed(2) ?? '0.00'}
+              </div>
+              <div>
+                <strong>Shipping to:</strong> {modalOrder.customer?.name}, {modalOrder.customer?.address}
+              </div>
+              <div className="order-items" style={{ marginTop: '18px' }}>
+                <h3 style={{ color: '#0071ce', marginBottom: '8px' }}>Items:</h3>
+                {modalOrder.items.map((item, i) => (
+                  <div key={i} className="order-item" style={{ background: 'none', border: 'none', boxShadow: 'none', cursor: 'default', padding: 0, gap: 10 }}>
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      style={{ width: 54, height: 54, borderRadius: 8, objectFit: 'cover', marginRight: 10 }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#333' }}>{item.name}</div>
+                      <div style={{ fontSize: 14, color: '#6c757d' }}>Qty: {item.quantity}</div>
+                      <div style={{ fontSize: 14, color: '#0071ce' }}>${item.price?.toFixed(2) ?? '0.00'} each</div>
+                      {/* Display selected variants if present */}
+                      {item.selectedVariants && (
+                        <div style={{ fontSize: '0.95em', color: '#0071ce', marginTop: 2 }}>
+                          {Object.entries(item.selectedVariants).map(([key, value]) => (
+                            <span key={key} style={{ marginRight: 8 }}>
+                              {key.charAt(0).toUpperCase() + key.slice(1)}: {value}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-button" onClick={() => setModalOrder(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
