@@ -19,7 +19,7 @@
   // Middleware
   // ─────────────────────────────────────────────────────────────────────────────
   app.use(cors({
-    origin: process.env.FRONTEND_URL, // Allow requests from the frontend
+    origin: 'https://voiceassist1.netlify.app', // Allow requests from the frontend
     credentials: true
   }));
   app.use(express.json()); // Parse JSON bodies
