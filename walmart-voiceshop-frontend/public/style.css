@@ -656,3 +656,22 @@ select:focus {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 113, 206, 0.3);
 }
+/* Add this to your existing CSS file */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.notification {
+    font-weight: 500;
+}
+
+.notification.error {
+    background: #f44336 !important;
+}

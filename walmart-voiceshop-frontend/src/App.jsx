@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import { AppProvider } from './context/AppContext';
+// Remove AppProvider import since it's already in index.jsx
 import ProtectedRoute from './components/ProtectedRoute';
 import AuthPage from './pages/AuthPage';
 import MainApp from './components/MainApp';
@@ -11,26 +11,20 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppProvider>
-          <Routes>
-            {/* Public: Sign In / Sign Up */}
-            <Route path="/auth" element={<AuthPage />} />
-
-            {/* Protected: main application */}
-            <Route
-              path="/app/*"
-              element={
-                <ProtectedRoute>
-                  <MainApp />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Redirect base and invalid URLs to /auth */}
-            <Route path="/" element={<Navigate to="/auth" replace />} />
-            <Route path="*" element={<Navigate to="/auth" replace />} />
-          </Routes>
-        </AppProvider>
+        {/* Remove AppProvider wrapper from here */}
+        <Routes>
+          <Route path="/auth" element={<AuthPage />} />
+          <Route
+            path="/app/*"
+            element={
+              <ProtectedRoute>
+                <MainApp />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/auth" replace />} />
+          <Route path="*" element={<Navigate to="/auth" replace />} />
+        </Routes>
       </AuthProvider>
     </Router>
   );

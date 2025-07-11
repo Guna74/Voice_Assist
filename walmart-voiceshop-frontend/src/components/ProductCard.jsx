@@ -4,13 +4,13 @@ import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
 import VariantSelector from './VariantSelector';
 import './ProductCard.css';
-import { addToCart as addToCartAPI } from '../services/api'; // Adjust path as needed 
 
 export default function ProductCard({ product }) {
-  const { cart, setCart } = useContext(AppContext);
+  const { addToCart } = useContext(AppContext);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedVariants, setSelectedVariants] = useState({});
   const [validationError, setValidationError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Get unique variant options
   const sizes = [...new Set(product.variants?.map(v => v.size).filter(Boolean))] || [];
@@ -72,142 +72,80 @@ export default function ProductCard({ product }) {
     return missing;
   };
 
-  // const addToCart = (e) => {
-  //   e.stopPropagation();
-  //   if (isOutOfStock) return;
-    
-  //   // Check if variants are required but not selected
-  //   if (requiresVariants) {
-  //     const missingVariants = validateVariants();
-  //     if (missingVariants.length > 0) {
-  //       setValidationError(`Please select: ${missingVariants.join(', ')}`);
-  //       setShowDetails(true); // Open modal to show variant selectors
-  //       return;
-  //     }
-  //   }
-    
-  //   setValidationError('');
-    
-  //   const existing = cart.find(item => 
-  //     item._id === product._id && 
-  //     JSON.stringify(item.selectedVariants || {}) === JSON.stringify(selectedVariants)
-  //   );
-    
-  //   if (existing) {
-  //     setCart(cart.map(item =>
-  //       item._id === product._id && 
-  //       JSON.stringify(item.selectedVariants || {}) === JSON.stringify(selectedVariants)
-  //         ? { ...item, quantity: item.quantity + 1 }
-  //         : item
-  //     ));
-  //   } else {
-  //     setCart([...cart, { 
-  //       ...product, 
-  //       price: price,
-  //       selectedVariants: selectedVariants,
-  //       quantity: 1 
-  //     }]);
-  //   }
+  // Updated addToCart function using context
+  const handleAddToCart = async (e) => {
+    e.stopPropagation();
+    if (isOutOfStock || isLoading) return;
 
-  //   // Visual feedback
-  //   const btn = e.currentTarget;
-  //   const originalText = btn.textContent;
-  //   btn.textContent = '✓ Added!';
-  //   btn.classList.add('cart-button-added');
-  //   setTimeout(() => {
-  //     btn.textContent = originalText;
-  //     btn.classList.remove('cart-button-added');
-  //   }, 1500);
-  // };
-// import { addToCart as addToCartAPI } from './path/to/your/api'; // Adjust path as needed
-
-const addToCart = async (e) => {
-  e.stopPropagation();
-  if (isOutOfStock) return;
-
-  // Check if variants are required but not selected
-  if (requiresVariants) {
-    const missingVariants = validateVariants();
-    if (missingVariants.length > 0) {
-      setValidationError(`Please select: ${missingVariants.join(', ')}`);
-      setShowDetails(true); // Open modal to show variant selectors
-      return;
+    // Check if variants are required but not selected
+    if (requiresVariants) {
+      const missingVariants = validateVariants();
+      if (missingVariants.length > 0) {
+        setValidationError(`Please select: ${missingVariants.join(', ')}`);
+        setShowDetails(true); // Open modal to show variant selectors
+        return;
+      }
     }
-  }
 
-  setValidationError('');
+    setValidationError('');
 
-  // Prepare cart item data for backend
-  const cartItemData = {
-    productId: product._id,
-    selectedVariants: selectedVariants,
-    quantity: 1,
-    price: price
-  };
+    // Get button reference for UI feedback
+    const btn = e.currentTarget;
+    const originalText = btn.textContent;
 
-  // Get button reference for UI feedback
-  const btn = e.currentTarget;
-  const originalText = btn.textContent;
+    try {
+      setIsLoading(true);
+      
+      // Show loading state
+      btn.textContent = 'Adding...';
+      btn.disabled = true;
 
-  try {
-    // Show loading state
-    btn.textContent = 'Adding...';
-    btn.disabled = true;
-
-    // Send to backend
-    const response = await addToCartAPI(cartItemData);
-
-    // Update local cart state only after successful backend response
-    const existing = cart.find(item =>
-      item._id === product._id &&
-      JSON.stringify(item.selectedVariants || {}) === JSON.stringify(selectedVariants)
-    );
-
-    if (existing) {
-      setCart(cart.map(item =>
-        item._id === product._id &&
-        JSON.stringify(item.selectedVariants || {}) === JSON.stringify(selectedVariants)
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
-    } else {
-      setCart([...cart, {
+      // Create product object with selected price
+      const productToAdd = {
         ...product,
-        price: price,
-        selectedVariants: selectedVariants,
-        quantity: 1
-      }]);
-    }
+        price: price
+      };
 
-    // Success feedback
-    btn.textContent = '✓ Added!';
-    btn.classList.add('cart-button-added');
-    setTimeout(() => {
-      btn.textContent = originalText;
-      btn.classList.remove('cart-button-added');
-      btn.disabled = false;
-    }, 1500);
+      // Use context addToCart method
+      await addToCart(productToAdd, 1, selectedVariants);
 
-  } catch (error) {
-    console.error('Error adding to cart:', error);
-    
-    // Error feedback
-    btn.textContent = '✗ Failed!';
-    btn.classList.add('cart-button-error');
-    setTimeout(() => {
-      btn.textContent = originalText;
-      btn.classList.remove('cart-button-error');
-      btn.disabled = false;
-    }, 1500);
-    
-    // Show user-friendly error message
-    if (error.message === 'Authentication expired') {
-      setValidationError('Please log in to add items to cart');
-    } else {
-      setValidationError('Failed to add item to cart. Please try again.');
+      // Success feedback
+      btn.textContent = '✓ Added!';
+      btn.classList.add('cart-button-added');
+      
+      console.log('Item added to cart successfully');
+      
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.classList.remove('cart-button-added');
+        btn.disabled = false;
+      }, 1500);
+
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      
+      // Error feedback
+      btn.textContent = '✗ Failed!';
+      btn.classList.add('cart-button-error');
+      
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.classList.remove('cart-button-error');
+        btn.disabled = false;
+      }, 1500);
+      
+      // Show user-friendly error message
+      if (error.message === 'Authentication expired') {
+        setValidationError('Please log in to add items to cart');
+      } else if (error.message.includes('required')) {
+        setValidationError(error.message);
+      } else {
+        setValidationError('Failed to add item to cart. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
-  }
-};
+  };
 
   const renderStars = (rating) =>
     Array.from({ length: 5 }, (_, i) => (
@@ -288,12 +226,12 @@ const addToCart = async (e) => {
         )}
 
         <button
-          onClick={addToCart}
-          className="cart-button"
-          disabled={isOutOfStock}
+          onClick={handleAddToCart}
+          className={`cart-button ${isLoading ? 'loading' : ''}`}
+          disabled={isOutOfStock || isLoading}
           aria-label={`Add ${product.name} to cart`}
         >
-          🛒 Add to Cart
+          {isLoading ? '⏳ Adding...' : '🛒 Add to Cart'}
         </button>
 
         {validationError && (
@@ -410,11 +348,11 @@ const addToCart = async (e) => {
                 </div>
 
                 <button
-                  onClick={addToCart}
-                  className="add-to-cart-detail"
-                  disabled={isOutOfStock}
+                  onClick={handleAddToCart}
+                  className={`add-to-cart-detail ${isLoading ? 'loading' : ''}`}
+                  disabled={isOutOfStock || isLoading}
                 >
-                  🛒 Add to Cart - ${price.toFixed(2)}
+                  {isLoading ? '⏳ Adding...' : `🛒 Add to Cart - $${price.toFixed(2)}`}
                 </button>
               </div>
             </div>

@@ -1,8 +1,8 @@
 const express = require('express');
-const Order   = require('../models/Order');
-const router  = express.Router();
+const Order = require('../models/Order');
+const router = express.Router();
 
-/* ───────────── GET  /api/orders/:userId ───────────── */
+// GET /api/orders/:userId
 router.get('/:userId', async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.params.userId })
@@ -14,19 +14,18 @@ router.get('/:userId', async (req, res) => {
   }
 });
 
-/* ───────────── POST /api/orders/:userId ─────────────
-   Creates a new order from the current cart          */
+// POST /api/orders/:userId
 router.post('/:userId', async (req, res) => {
   try {
     const { items = [], total = 0, customer = {} } = req.body;
 
     const order = await Order.create({
-      userId:   req.params.userId,
+      userId: req.params.userId,
       items,
       total,
       customer,
-      status:   'Completed',
-      date:     new Date()
+      status: 'Completed',
+      date: new Date()
     });
 
     res.json(order);

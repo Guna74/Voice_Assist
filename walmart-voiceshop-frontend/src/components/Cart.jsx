@@ -5,19 +5,36 @@ import { AppContext } from '../context/AppContext';
 import './Cart.css';
 
 export default function Cart() {
-  const { cart, setCart, orders, setOrders } = useContext(AppContext);
+  const { cart, setCart, orders, setOrders, createOrder } = useContext(AppContext);
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // Helper to get a valid price, falling back to first variant or zero
-  const getItemPrice = (item) => {
-    if (item.price != null) return item.price;
-    if (item.variants?.length > 0 && item.variants[0].price != null) {
-      return item.variants[0].price;
-    }
-    return 0;
-  };
+const getItemPrice = (item) => {
+  // First check if item has a direct price
+  if (item.price != null && item.price > 0) return item.price;
+  
+  // If item has selectedVariants, find the matching variant price
+  if (item.selectedVariants && item.variants?.length > 0) {
+    const matchingVariant = item.variants.find(variant => {
+      return (!variant.size || variant.size === item.selectedVariants.size) &&
+             (!variant.shoeSize || variant.shoeSize === item.selectedVariants.shoeSize) &&
+             (!variant.ram || variant.ram === item.selectedVariants.ram) &&
+             (!variant.storage || variant.storage === item.selectedVariants.storage);
+    });
+    if (matchingVariant?.price) return matchingVariant.price;
+  }
+  
+  // Fallback to first variant price
+  if (item.variants?.length > 0 && item.variants[0].price != null) {
+    return item.variants[0].price;
+  }
+  
+  console.warn('No valid price found for item:', item.name);
+  return 0;
+};
+
 
   const total = cart.reduce((sum, item) => {
     const price = getItemPrice(item);
@@ -39,7 +56,7 @@ export default function Cart() {
     setCart(cart.filter(item => item._id !== id));
   };
 
-  const checkout = () => {
+  const handleCheckout = async () => {
     if (!name.trim() || !address.trim()) {
       alert('Please enter your name and address to checkout.');
       return;
@@ -47,23 +64,22 @@ export default function Cart() {
 
     setIsCheckingOut(true);
 
-    setTimeout(() => {
-      const order = {
-        id: Date.now().toString(),
-        date: new Date().toLocaleString(),
-        items: [...cart],
-        total: Number(total.toFixed(2)),
-        customer: { name: name.trim(), address: address.trim() },
-        status: 'Completed'
-      };
+    const orderData = {
+      items: cart,
+      total: Number(total.toFixed(2)),
+      customer: { name: name.trim(), address: address.trim() }
+    };
 
-      setOrders([...orders, order]);
-      setCart([]);
+    const result = await createOrder(orderData);
+    setIsCheckingOut(false);
+
+    if (result.success) {
+      alert('🎉 Order placed successfully! Thank you for shopping with Walmart VoiceShop!');
       setName('');
       setAddress('');
-      setIsCheckingOut(false);
-      alert('🎉 Order placed successfully! Thank you for shopping with Walmart VoiceShop!');
-    }, 2000);
+    } else {
+      alert('Failed to place order: ' + (result.error || 'Unknown error'));
+    }
   };
 
   if (cart.length === 0) {
@@ -157,7 +173,7 @@ export default function Cart() {
         className="checkout-form"
         onSubmit={e => {
           e.preventDefault();
-          checkout();
+          handleCheckout();
         }}
       >
         <h3 className="checkout-title">📦 Checkout Information</h3>
