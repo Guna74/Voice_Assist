@@ -18,10 +18,23 @@
   // ─────────────────────────────────────────────────────────────────────────────
   // Middleware
   // ─────────────────────────────────────────────────────────────────────────────
-  app.use(cors({
-    origin: 'https://voiceassist1.netlify.app', // Allow requests from the frontend
-    credentials: true
-  }));
+const allowedOrigins = [
+  'http://localhost:5000',
+  'https://voiceassist1.netlify.app'
+];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
   app.use(express.json()); // Parse JSON bodies
 
   // ─────────────────────────────────────────────────────────────────────────────
