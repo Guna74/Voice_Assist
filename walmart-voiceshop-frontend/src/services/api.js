@@ -1,5 +1,5 @@
 // Base URL configuration
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3001';
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 // Token management
 const getToken = () => localStorage.getItem('authToken');
