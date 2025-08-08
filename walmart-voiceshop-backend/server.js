@@ -103,8 +103,9 @@ app.use(cors({
   };
 
   /* Find ONE product by name (fuzzy) */
-
-const findProductByName = async (name) => {
+  
+  const findProductByName = async (name) => {
+  console.log(Product.name);
   if (!name || typeof name !== 'string') return null;
 
   // Normalize user input: lowercase, remove 's, apostrophes, extra spaces
@@ -214,6 +215,14 @@ const findProductByName = async (name) => {
     "action": { "type": "add_to_cart" },
     "response": "Added 1 iPhone 15 Pro (8GB, 256GB) to cart.",
     "followUpQuestions": []
+  }
+  If the user says "add size 8 mens sport sneakers to cart", return:
+  {
+    "intent": "add_to_cart",
+    "entities": { "product": "mens sport sneakers", "shoeSize": "8" },
+    "action": { "type": "add_to_cart" },
+    "response": "Added 1 mens sport sneakers (size: 8) to cart.",
+    "followUpQuestions": []
   }`;
 
     // Spanish version of the schema
@@ -247,6 +256,7 @@ const findProductByName = async (name) => {
 
   /* SEARCH */
   handlers.search = async (ai, session, lang) => {
+    console.log(ai);
     const term = ai.entities.product;
     const items = await findProducts(term);
     ai.action = { type: 'search', data: { query: term, results: items } };
@@ -266,6 +276,7 @@ const findProductByName = async (name) => {
   /* ADD_TO_CART */
   handlers.add_to_cart = async (ai, session, lang) => {
     console.log(ai);
+    console.log(Product);
     const { product, size, shoeSize, ram, storage, quantity } = ai.entities || {};
     const actionType = ai.action?.type;
 
@@ -411,6 +422,7 @@ const findProductByName = async (name) => {
 
   /* REMOVE_FROM_CART */
   handlers.remove_from_cart = async (ai, session, lang) => {
+    console.log(ai);
     const name = (ai.entities.product || '').toLowerCase().trim();
     const qty = ai.entities.quantity || 1;
     const idx = session.cart.findIndex(
@@ -477,6 +489,7 @@ const findProductByName = async (name) => {
 
   /* SHOW_SALE_ITEMS */
   handlers.show_sale_items = async (ai, session, lang) => {
+    console.log(ai);
     const items = await Product.find({ onSale: true });
     ai.action = { type: 'show_sale_items', data: { products: items } };
     ai.response = lang === 'es'
