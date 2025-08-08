@@ -145,6 +145,14 @@ const MainApp = () => {
         setTitle(`${entities.category} Products`);
         setProducts(action?.data?.products || []);
         break;
+
+      case 'show_orders':
+        startTransition(() => {
+          setView('orders');
+          setShowCartPage(false);
+        });
+        break;
+
       case 'show_all_products':
         setShowCartPage(false);
         setTitle('All Products');

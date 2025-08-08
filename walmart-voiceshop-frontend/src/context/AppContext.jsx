@@ -6,7 +6,12 @@ import axios from 'axios';
 export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const [sessionId] = useState(() => uuidv4());
+  // Generate sessionId that includes userId
+  const [sessionId] = useState(() => {
+    const userId = auth.getUserId(); // Get the userId first
+    return `session:${userId}`; // Format: "session:user_timestamp_randomstring"
+  });
+
   const [currentLanguage, setCurrentLanguage] = useState('en-US');
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -205,7 +210,8 @@ export const AppProvider = ({ children }) => {
 };
 
 export const useAppContext = () => {
-  const context = useContext(AppContext); // ← Fixed: use useContext instead of React.useContext
+
+  const context = useContext(AppContext);
   if (context === undefined) {
     throw new Error('useAppContext must be used within an AppProvider');
   }

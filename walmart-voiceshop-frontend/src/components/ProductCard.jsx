@@ -192,10 +192,16 @@ export default function ProductCard({ product }) {
           </div>
         )}
 
-        <div className="product-price">
+        <div className="product-detail-price">
           <span className="current-price">${price.toFixed(2)}</span>
           {originalPrice && (
-            <span className="original-price">${originalPrice.toFixed(2)}</span>
+            <>
+              <span className="original-price">${originalPrice.toFixed(2)}</span>
+              {/* Optional: Add savings badge */}
+              <span className="discount-badge">
+                Save ${(originalPrice - price).toFixed(2)}
+              </span>
+            </>
           )}
         </div>
 
@@ -268,10 +274,19 @@ export default function ProductCard({ product }) {
                   </div>
                 )}
 
-                <div className="product-detail-price">
+                <div className="product-price">
                   <span className="current-price">${price.toFixed(2)}</span>
-                  {originalPrice && (
-                    <span className="original-price">${originalPrice.toFixed(2)}</span>
+                  {originalPrice && originalPrice > price && (
+                    <>
+                      <span className="list-price-label">List:</span>
+                      <span className="original-price">${originalPrice.toFixed(2)}</span>
+                      <span className="discount-percentage">
+                        {Math.round(((originalPrice - price) / originalPrice) * 100)}% off
+                      </span>
+                      <span className="savings-badge">
+                        You save ${(originalPrice - price).toFixed(2)}
+                      </span>
+                    </>
                   )}
                 </div>
 
@@ -362,3 +377,4 @@ export default function ProductCard({ product }) {
     </>
   );
 }
+

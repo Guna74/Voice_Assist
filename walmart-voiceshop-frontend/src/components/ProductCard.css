@@ -36,7 +36,24 @@
 }
 
 .product-detail-price {
-  font-size: 1.5rem;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+
+.product-detail-price .current-price {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #0071ce; /* Walmart blue */
+}
+
+.product-detail-price .original-price {
+  font-size: 0.8em; /* Much smaller than current price */
+  color: #999;
+  text-decoration: line-through;
+  font-weight: normal;
 }
 
 .product-detail-description {
@@ -98,6 +115,7 @@
     height: 250px;
   }
 }
+
 /* Variant requirement indicators */
 .variant-required {
   background: #fff3cd;
@@ -155,4 +173,149 @@
 .variant-selectors .variant-label::after {
   content: " *";
   color: #dc3545;
+}
+
+/* ===== E-COMMERCE STYLE PRICING ===== */
+
+/* Main product card pricing */
+.product-price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+
+.current-price {
+  font-size: 1.25em;
+  font-weight: 700;
+  color: #0071ce; /* Walmart blue for current price */
+  line-height: 1.2;
+}
+
+.original-price {
+  font-size: 0.75em; /* Much smaller - typical e-commerce size */
+  color: #767676; /* Muted gray */
+  text-decoration: line-through;
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+/* Savings/discount indicators - Orange colors */
+.savings-badge {
+  font-size: 0.7em;
+  color: #e47911; /* Orange text */
+  font-weight: 600;
+  background: #fff8f0; /* Light orange background */
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid #ffd6a5; /* Orange border */
+}
+
+.discount-percentage {
+  font-size: 0.7em;
+  color: #e47911; /* Orange text */
+  font-weight: 600;
+  background: #fff8f0; /* Light orange background */
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid #ffd6a5; /* Orange border */
+}
+
+/* Price container for better layout */
+.price-container {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+/* Detail modal pricing - slightly larger but same proportions */
+.product-detail-price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+
+.product-detail-price .current-price {
+  font-size: 1.6em;
+  font-weight: 700;
+  color: #0071ce; /* Walmart blue for current price */
+  line-height: 1.2;
+}
+
+.product-detail-price .original-price {
+  font-size: 0.85em; /* Proportionally smaller */
+  color: #767676;
+  text-decoration: line-through;
+  font-weight: 400;
+}
+
+.product-detail-price .savings-badge {
+  font-size: 0.8em;
+  color: #e47911; /* Orange text */
+  font-weight: 600;
+  background: #fff8f0; /* Light orange background */
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #ffd6a5; /* Orange border */
+}
+
+.product-detail-price .discount-percentage {
+  font-size: 0.8em;
+  color: #e47911; /* Orange text */
+  font-weight: 600;
+  background: #fff8f0; /* Light orange background */
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #ffd6a5; /* Orange border */
+}
+
+/* Mobile responsiveness for pricing */
+@media (max-width: 768px) {
+  .current-price {
+    font-size: 1.1em;
+  }
+  
+  .original-price {
+    font-size: 0.7em;
+  }
+  
+  .savings-badge,
+  .discount-percentage {
+    font-size: 0.65em;
+  }
+  
+  .product-detail-price .current-price {
+    font-size: 1.4em;
+  }
+  
+  .product-detail-price .original-price {
+    font-size: 0.8em;
+  }
+}
+
+/* Hover effects for interactive elements */
+.product-card:hover .current-price {
+  color: #005a9f; /* Darker blue on hover */
+  transition: color 0.2s ease;
+}
+
+/* Additional styling for "You Save" text */
+.you-save-text {
+  font-size: 0.7em;
+  color: #e47911; /* Orange for savings text */
+  font-weight: 500;
+}
+
+/* List price label */
+.list-price-label {
+  font-size: 0.65em;
+  color: #999;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }

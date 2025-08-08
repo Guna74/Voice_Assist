@@ -25,7 +25,7 @@
   app.use(express.json()); // Parse JSON bodies
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Database connection
+  // Data connection
   // ─────────────────────────────────────────────────────────────────────────────
   // Add better error handling for MongoDB connection
   mongoose
@@ -38,7 +38,7 @@
     .then(() => console.log('✓ Connected to MongoDB Atlas'))
     .catch(err => {
       console.error('✗ MongoDB connection error:', err);
-      process.exit(1); // Exit if can't connect to database
+      process.exit(1); // Exit if can't connect to data
     });
 
   // Handle connection errors after initial connection
@@ -90,64 +90,83 @@
   };
 
   /* Find ONE product by name (fuzzy) */
-  const findProductByName = async (name) => {
-    if (!name || typeof name !== 'string') return null;
-    const escapeRegex = str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    try {
-      // 1. Exact match
-      let product = await Product.findOne({
-        name: { $regex: `^${escapeRegex(name)}$`, $options: 'i' }
-      });
-      if (product) return product;
-    
-      // 2. Partial match
+
+const findProductByName = async (name) => {
+  if (!name || typeof name !== 'string') return null;
+
+  // Normalize user input: lowercase, remove 's, apostrophes, extra spaces
+  const normalize = str =>
+    str
+      .toLowerCase()
+      .replace(/'s/g, '')        // remove possessive 's
+      .replace(/'/g, '')         // remove other apostrophes
+      .replace(/\s+/g, ' ')      // collapse multiple spaces
+      .trim();
+
+  const escapeRegex = str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const normalizedInput = normalize(name);
+
+  try {
+    // 1. Exact match ignoring apostrophes and 's
+    const exactRegex = new RegExp(`^${escapeRegex(normalizedInput)}$`, 'i');
+    let product = await Product.findOne({
+      name: { $regex: exactRegex }
+    });
+    if (product) return product;
+
+    // 2. Partial match
+    const partialRegex = new RegExp(escapeRegex(normalizedInput), 'i');
+    product = await Product.findOne({ name: partialRegex });
+    if (product) return product;
+
+    // 3. All words in any order (each word must appear somewhere)
+    const words = normalizedInput.split(' ').filter(Boolean);
+    if (words.length > 1) {
+      const regexes = words.map(w => new RegExp(escapeRegex(w), 'i'));
       product = await Product.findOne({
-        name: { $regex: escapeRegex(name), $options: 'i' }
+        $and: regexes.map(r => ({ name: r }))
       });
       if (product) return product;
-    
-      // 3. All words in any order
-      const words = name.split(' ').filter(Boolean);
-      if (words.length > 1) {
-        const regexes = words.map(w => new RegExp(escapeRegex(w), 'i'));
-        product = await Product.findOne({ $and: regexes.map(r => ({ name: r })) });
-        if (product) return product;
-      }
-    
-      // 4. Fallback: first word
-      const firstWord = words[0];
-      if (firstWord) {
-        product = await Product.findOne({
-          name: new RegExp(escapeRegex(firstWord), 'i')
-        });
-        if (product) return product;
-      }
-    
-      return null;
-    } catch (e) {
-      console.error('findProductByName error:', e);
-      return null;
     }
-  };
+
+    // 4. Fallback: first word match
+    const firstWord = words[0];
+    if (firstWord) {
+      const firstWordRegex = new RegExp(escapeRegex(firstWord), 'i');
+      product = await Product.findOne({ name: firstWordRegex });
+      if (product) return product;
+    }
+
+    return null;
+  } catch (e) {
+    console.error('findProductByName error:', e);
+    return null;
+  }
+};
+
 
   /* Build system-prompt for the LLM */
   const buildPrompt = (msg, ctx, lang = 'en') => {
     const schemaEn = `
   You are a Walmart voice-commerce assistant.
   Return ONLY valid JSON with keys:
-    intent           (search|add_to_cart|show_cart|remove_from_cart|show_category|show_sale_items|show_all_products|help)
-    entities         { product, quantity, category, size, shoeSize, width, ram, storage }
-    action           { type, data }
+    intent           (search|add_to_cart|show_cart|remove_from_cart|show_orders|show_category|show_sale_items|show_all_products|help)
+    entities         { product, quantity, category, size, shoeSize, width, ram, storage } 
+    action           { type}
     response         (plain text)
     followUpQuestions[ ]
   IMPORTANT:
+  - entities must not be empty, always include at least "product" or "category".
   - For Clothing, if the user does not specify "size" (S, M, L, XL, etc.), DO NOT assume or fill in any default value. Instead, respond with a follow-up question asking for the size (e.g., "What size would you like for the shirt?") and set action: { type: "ask_variant", missing: ["size"] }.
-  - For Footwear, if the user does not specify "shoeSize" (6-12) or "width" (N, W), DO NOT assume or fill in any default value. Instead, respond with a follow-up question asking for the missing option(s) and set action: { type: "ask_variant", missing: ["shoeSize", "width"] } as needed.
+  - For Footwear, if the user does not specify "shoeSize" (6-12), DO NOT assume or fill in any default value. Instead, respond with a follow-up question asking for the missing option(s) and set action: { type: "ask_variant", missing: ["shoeSize"] } as needed.
   - For Electronics, if the user does not specify "ram" (4GB, 8GB, 16GB) or "storage" (128GB, 256GB), DO NOT assume or fill in any default value. Instead, respond with a follow-up question asking for the missing option(s) and set action: { type: "ask_variant", missing: ["ram", "storage"] } as needed.
   - NEVER use a default or placeholder value for any required variant. Only use information explicitly provided by the user.
   - If any required variant is missing, do NOT proceed with the action. Always ask the user for the missing information first.
   - If all required variants are present, set action: { type: "add_to_cart" } and confirm the addition in the response.
   - Only return valid JSON, no extra text.
+  - return size as only [S, M, L, XL] not small, medium, large, extra-large.
+  - quantity is optional, default to 1 if not specified and is always an integer.
+  - if the action type is not recognized, return action: { type: "none", data: {} } and a generic response.
   Products: iPhone, Samsung Galaxy, MacBook, AirPods, shirts, shoes, jackets, jeans, coffee maker, vacuum, table, bedding, bananas, milk, bread, chicken.
   Categories: Electronics, Clothing, Footwear, Home, Groceries.
   EXAMPLES:
@@ -202,7 +221,7 @@
     action: { type: 'none', data: {} },
     response: lang.startsWith('es')
       ? 'Lo siento, no entendí. ¿Puedes reformular?'
-      : 'Sorry, I did not understand. Could you rephrase?',
+      : 'Sorry, I did not understand. Could you rephrase it?',
     followUpQuestions: lang.startsWith('es')
       ? ['¿Te muestro productos populares?']
       : ['Would you like to see popular products?']
@@ -280,9 +299,9 @@
       };
       session.cart.push(item);
       ai.action = { type: 'add_to_cart', data: { cart: session.cart } };
-      ai.response = lang === 'es'
-        ? `Añadí 1 ${prod.name} al carrito.`
-        : `Added 1 ${prod.name} to cart.`;
+      // ai.response = lang === 'es'
+      //   ? `Añadí ${item.quantity} ${prod.name} al carrito.`
+      //   : `Added ${item.quantity} ${prod.name} to cart.`;
       ai.followUpQuestions = [
         lang === 'es' ? '¿Deseas ver tu carrito?' : 'Do you want to view your cart?'
       ];
@@ -342,9 +361,9 @@
       };
       session.cart.push(item);
       ai.action = { type: 'add_to_cart', data: { cart: session.cart } };
-      ai.response = lang === 'es'
-        ? `Añadí 1 ${prod.name} al carrito.`
-        : `Added 1 ${prod.name} to cart.`;
+      // ai.response = lang === 'es'
+      //   ? `Añadí ${quantity} ${prod.name} al carrito.`
+      //   : `Added ${quantity} ${prod.name} to cart.`;
       ai.followUpQuestions = [
         lang === 'es' ? '¿Deseas ver tu carrito?' : 'Do you want to view your cart?'
       ];
@@ -362,6 +381,7 @@
 
   /* SHOW_CART */
   handlers.show_cart = async (ai, session, lang) => {
+    console.log(ai);
     const count = session.cart.reduce((s, i) => s + i.quantity, 0);
     const total = session.cart.reduce((s, i) => s + i.quantity * i.price, 0).toFixed(2);
     ai.action = { type: 'show_cart', data: { cart: session.cart } };
@@ -405,6 +425,8 @@
 
   /* SHOW_ALL_PRODUCTS */
   handlers.show_all_products = async (ai, session, lang) => {
+    console.log(ai);
+
     // Fetch all products (no search term, no category)
     const items = await findProducts('', null, 50); // 50 or any reasonable limit
     ai.action = { type: 'show_all_products', data: { products: items } };
@@ -419,7 +441,16 @@
 
   /* SHOW_CATEGORY */
   handlers.show_category = async (ai, session, lang) => {
+    console.log(ai);
+
     const cat = ai.entities.category;
+    if(cat==='undefined' || !cat || !['Electronics', 'Clothing', 'Footwear', 'Home', 'Groceries'].includes(cat)) {
+      ai.response = lang === 'es'
+      ? `No entiendo tu solicitud.`
+      : `I did not understand your request.`;
+      ai.action = { type: 'none', data: {} };
+      return ai;
+    }
     const items = await findProducts('', cat);
     ai.action = { type: 'show_category', data: { category: cat, products: items } };
     ai.response = lang === 'es'
@@ -444,6 +475,67 @@
     return ai;
   };
 
+/* SHOW_ORDERS */
+handlers.show_orders = async (ai, session, lang) => {
+  console.log(ai);  
+  // 1. Figure-out whose orders we need
+  const userId = session.userId;
+  if (!userId) {
+    ai.response = lang === 'es'
+      ? 'Para ver tus pedidos necesito saber quién eres. Por favor inicia sesión primero.'
+      : 'I need to know who you are to show orders – please sign-in first.';
+    ai.action = { type: 'none', data: {} };
+    ai.followUpQuestions = [
+      lang === 'es' ? '¿Te gustaría iniciar sesión?' : 'Would you like to log-in?'
+    ];
+    return ai;
+  }
+
+  // 2. Fetch last 10 orders from MongoDB
+  try {
+    const Order = require('./models/Order');
+    const orders = await Order.find({ userId })
+                              .sort({ date: -1 })
+                              .limit(10);
+
+    ai.action = {
+      type : 'show_orders',
+      data : { orders, navigate : '/orders' }   // frontend can route to /orders
+    };
+
+    if (orders.length === 0) {
+      ai.response = lang === 'es'
+        ? 'Aún no tienes pedidos registrados.'
+        : 'You do not have any orders yet.';
+      ai.followUpQuestions = [
+        lang === 'es' ? '¿Quieres empezar a comprar?' : 'Would you like to start shopping?'
+      ];
+    } else {
+      ai.response = lang === 'es'
+        ? `Tienes ${orders.length} pedido${orders.length > 1 ? 's' : ''} guardado${orders.length > 1 ? 's' : ''}.`
+        : `You have ${orders.length} saved order${orders.length > 1 ? 's' : ''}.`;
+      ai.followUpQuestions = [
+        lang === 'es'
+          ? '¿Deseas ver los detalles o volver a pedir algo?'
+          : 'Would you like to view details or reorder anything?'
+      ];
+    }
+    return ai;
+  } catch (err) {
+    console.error('SHOW_ORDERS handler error:', err);
+    ai.response = lang === 'es'
+      ? 'Hubo un problema al recuperar tus pedidos.'
+      : 'There was a problem fetching your orders.';
+    ai.action = { type: 'error', data: { error: err.message } };
+    ai.followUpQuestions = [
+      lang === 'es' ? '¿Intentar de nuevo?' : 'Would you like to try again?'
+    ];
+    return ai;
+  }
+};
+
+
+// I did not understand your request.
   // ─────────────────────────────────────────────────────────────────────────────
   // Generic intent router
   // ─────────────────────────────────────────────────────────────────────────────
@@ -528,7 +620,7 @@
           'X-Title': 'Walmart VoiceShop'
         },
         body: JSON.stringify({
-          model: 'meta-llama/llama-3-8b-instruct',
+          model: 'meta-llama/llama-3.2-3b-instruct',
           messages: [
             { role: 'system', content: prompt },
             { role: 'user', content: message }
@@ -540,7 +632,7 @@
 
       const orJson = await orRes.json();
       const aiRaw = orJson.choices?.[0]?.message?.content || '';
-
+//find
       // Parse JSON from model
       let ai;
       try {
@@ -676,6 +768,39 @@
       res.status(500).json({ error: 'Failed to fetch cart' });
     }
   });
+  
+app.post('/api/cart/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { items } = req.body;
+    
+    const cart = await Cart.findOneAndUpdate(
+      { userId },
+      { 
+        items: items || [],
+        updatedAt: new Date()
+      },
+      { 
+        upsert: true,
+        new: true 
+      }
+    );
+    
+    // Update in-memory session if exists
+    const sessionId = `session:${userId}`;
+    if (sessions.has(sessionId)) {
+      const session = sessions.get(sessionId);
+      session.cart = cart.items;
+      sessions.set(sessionId, session);
+    }
+    
+    res.json({ success: true, cart: cart.items });
+  } catch (error) {
+    console.error('Error saving cart:', error);
+    res.status(500).json({ error: 'Failed to save cart' });
+  }
+});
+
 
   // Update cart item quantity
   app.put('/api/cart/update', async (req, res) => {
@@ -851,67 +976,6 @@
     } catch (error) {
       console.error('Error getting cart summary:', error);
       res.status(500).json({ error: 'Failed to get cart summary' });
-    }
-  });
-
-  // Add these new API endpoints for cart management
-  app.get('/api/cart/:userId', async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const cart = await Cart.findOne({ userId });
-    
-      if (!cart) {
-        return res.json([]);
-      }
-    
-      res.json(cart.items || []);
-    } catch (error) {
-      console.error('Error fetching cart:', error);
-      res.status(500).json({ error: 'Failed to fetch cart' });
-    }
-  });
-
-  app.post('/api/cart/:userId', async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const { items } = req.body;
-    
-      const cart = await Cart.findOneAndUpdate(
-        { userId },
-        { 
-          items: items || [],
-          updatedAt: new Date()
-        },
-        { 
-          upsert: true,
-          new: true 
-        }
-      );
-    
-      res.json({ success: true, cart: cart.items });
-    } catch (error) {
-      console.error('Error saving cart:', error);
-      res.status(500).json({ error: 'Failed to save cart' });
-    }
-  });
-
-  app.delete('/api/cart/:userId', async (req, res) => {
-    try {
-      const { userId } = req.params;
-    
-      await Cart.findOneAndUpdate(
-        { userId },
-        { 
-          items: [],
-          updatedAt: new Date()
-        },
-        { upsert: true }
-      );
-    
-      res.json({ success: true, message: 'Cart cleared' });
-    } catch (error) {
-      console.error('Error clearing cart:', error);
-      res.status(500).json({ error: 'Failed to clear cart' });
     }
   });
 
