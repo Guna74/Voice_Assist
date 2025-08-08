@@ -1,5 +1,6 @@
 // Base URL configuration
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3001';
+const BASE_URL = 
+'https://voice-assist-ns4p.onrender.com';
 
 // Token management
 const getToken = () => localStorage.getItem('authToken');
