@@ -231,7 +231,7 @@ const MainApp = () => {
     <div className="app">
       <header className="header">
         <div className="header-content">
-          <h1 className="logo"><span className="highlight">Walmart</span> VoiceShop</h1>
+          <h1 className="logo"><span className="highlight">VoiceShop</span> </h1>
           <nav className="main-nav">
             <button onClick={() => { setView('home'); setShowCartPage(false); }}
               className={`nav-button ${view==='home' && !showCartPage? 'active':''}`}>Home</button>
@@ -295,7 +295,7 @@ const MainApp = () => {
       )}
 
       <footer className="walmart-footer">
-        <div className="footer-content">© 2025 Walmart VoiceShop • Powered by Voice AI</div>
+        <div className="footer-content">© 2025 VoiceShop • Powered by Voice AI</div>
       </footer>
 
       {showOrderModal && currentOrder && (
