@@ -646,7 +646,7 @@ handlers.show_orders = async (ai, session, lang) => {
           'X-Title': 'Walmart VoiceShop'
         },
         body: JSON.stringify({
-          model: 'meta-llama/llama-3.2-3b-instruct',
+          model: 'meta-llama/llama-3.3-70b-instruct:free',
           messages: [
             { role: 'system', content: prompt },
             { role: 'user', content: message }
